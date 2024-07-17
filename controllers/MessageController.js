@@ -28,8 +28,6 @@ export const getMessages = async (req, res, next)=>{
     try{
         const prisma = getPrismaInstance();
         const {from, to} = req.params;
-
-        console.log(from, to);
         
         // add to sender and reciever and for reciever and sender
         const messages = await prisma.messages.findMany({
