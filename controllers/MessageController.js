@@ -1,10 +1,13 @@
 import getPrismaInstance from "../utils/PrismaClient.js";
+import fs from "fs";
 
 export const addMessage = async (req, res, next)=>{
     try{
         const prisma = getPrismaInstance();
         const {message, from, to} = req.body;
-        const getUser = onlineUsers.get(to);
+        const getUser = onlineUsers.get(to); // check for online user
+
+        // add message to sender(from) - reciever(to)
         if(message && from && to){
             const newMessage = await prisma.messages.create({
                 data:{
@@ -69,6 +72,38 @@ export const getMessages = async (req, res, next)=>{
         });
         
         return res.status(200).json({messages})
+    }catch(err){
+        next(err);
+    }
+}
+
+
+export const addImageMessage = async(req, res, next) =>{
+    try{
+        if(req.file){
+            // set unique filename
+            const date = Date.now();
+            let fileName = "uploads/images/" + date + req.file.originalname;
+            fs.renameSync(req.file.path, fileName);
+
+            const prisma = getPrismaInstance();
+            const {from, to} = req.query;
+
+            // store in database
+            if(from && to){
+                const message = await prisma.messages.create({
+                    data:{
+                        message:fileName,
+                        sender:{connect:{id:parseInt(from)}},
+                        reciever:{connect:{id:parseInt(to)}},
+                        type:"image",
+                    },
+                });
+                return res.status(201).json({message});
+            }
+            return res.status(400).send("from, to is required");
+        }
+        return res.status(400).send("Image is required");
     }catch(err){
         next(err);
     }
