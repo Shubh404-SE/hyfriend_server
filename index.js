@@ -38,6 +38,7 @@ io.on("connection", (socket) => {
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-recieve", {
         from: data.from,
+        to:data.to,
         message: data.message,
       });
     }
