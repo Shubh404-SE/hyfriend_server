@@ -144,6 +144,7 @@ export const addAudioMessage = async(req, res, next) =>{
 export const getInitialContactsWithMessages = async(req, res, next)=>{
     try{
         const userId = parseInt(req.params.from);
+        console.log(userId);
         const prisma = getPrismaInstance();
         const user = await prisma.user.findUnique({
             where:{id:userId},
@@ -158,9 +159,14 @@ export const getInitialContactsWithMessages = async(req, res, next)=>{
                 } 
             }
         });
+
+        // console.log(user);
         
         const messages = [...user.sentMessages, ...user.recieverMessages]
-        messages.sort((a, b)=>b.createdAt.getTime()>a.createdAt.getTime());
+        messages.sort((a, b)=>b.createdAt.getTime()<a.createdAt.getTime());
+
+        // console.log(messages);
+
         const users = new Map();  // users map
         const messageStatusChange = [];
 
