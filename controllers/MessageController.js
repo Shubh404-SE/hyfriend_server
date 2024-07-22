@@ -144,7 +144,7 @@ export const addAudioMessage = async(req, res, next) =>{
 export const getInitialContactsWithMessages = async(req, res, next)=>{
     try{
         const userId = parseInt(req.params.from);
-        console.log(userId);
+        // console.log(userId);
         const prisma = getPrismaInstance();
         const user = await prisma.user.findUnique({
             where:{id:userId},
