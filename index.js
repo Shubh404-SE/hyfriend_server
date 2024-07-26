@@ -4,7 +4,7 @@ import cors from "cors";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
-
+import {createTables} from "./postgres/createTable.js"
 dotenv.config();
 const app = express();
 
@@ -17,6 +17,17 @@ app.use("/uploads/images", express.static("uploads/images"));
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
 
+
+const createTable = async () => {
+  try {
+    await createTables();
+  } catch (err) {
+    console.error('Error initializing server', err);
+    process.exit(1);
+  }
+};
+
+createTable();
 const server = app.listen(process.env.PORT, () => {
   console.log(`server started at port ${process.env.PORT}`);
 });
