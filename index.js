@@ -8,10 +8,11 @@ import {createTables} from "./postgres/createTable.js"
 dotenv.config();
 const app = express();
 
+// console.log(process.env.CLIENT_URL);
 app.use(cors({
   origin: process.env.CLIENT_URL, // Ensure this is the correct URL
   methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "application/json", "text/plain"],
 }));
 app.use(express.json());
 
