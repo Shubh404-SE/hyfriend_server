@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: process.env.CLIENT_URL, // Ensure this is the correct URL
+  origin: [process.env.CLIENT_URL, "http://localhost:3000"], // Ensure this is the correct URL
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "application/json", "text/plain", "*/*", "*"],
 }));
