@@ -4,28 +4,20 @@ import cors from "cors";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
-import {createTables} from "./postgres/createTable.js"
+import { createTables } from "./postgres/createTable.js";
+
 dotenv.config();
 const app = express();
 
-// console.log(process.env.CLIENT_URL);
-
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-//   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-//   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, application/json, text/plain, */*, *");
-//   next();
-// });
-// Define CORS configuration
+// CORS Configuration
 const corsOptions = {
   origin: process.env.CLIENT_URL,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Access-Control-Allow-Origin"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-
 app.options('*', cors(corsOptions)); // Handle preflight requests
 
 app.use(express.json());
@@ -35,7 +27,6 @@ app.use("/uploads/images", express.static("uploads/images"));
 
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
-
 
 const createTable = async () => {
   try {
@@ -47,8 +38,9 @@ const createTable = async () => {
 };
 
 createTable();
+
 const server = app.listen(process.env.PORT, () => {
-  console.log(`server started at port ${process.env.PORT}`);
+  console.log(`Server started at port ${process.env.PORT}`);
 });
 
 const io = new Server(server, {
@@ -63,69 +55,66 @@ io.on("connection", (socket) => {
   socket.on("add-user", (userId) => {
     onlineUsers.set(userId, socket.id);
     socket.broadcast.emit("online-users", {
-      onlineUsers:Array.from(onlineUsers.keys),
+      onlineUsers: Array.from(onlineUsers.keys()),
     });
   });
 
-  socket.on("signout", (id)=>{
+  socket.on("signout", (id) => {
     onlineUsers.delete(id);
     socket.broadcast.emit("online-users", {
-      onlineUsers:Array.from(onlineUsers.keys),
+      onlineUsers: Array.from(onlineUsers.keys()),
     });
-  })
+  });
 
   socket.on("send-msg", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-recieve", {
         from: data.from,
-        to:data.to,
+        to: data.to,
         message: data.message,
       });
     }
   });
 
-  socket.on("outgoing-voice-call", (data)=>{
+  socket.on("outgoing-voice-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
-    if(sendUserSocket){
+    if (sendUserSocket) {
       socket.to(sendUserSocket).emit("incoming-voice-call", {
-        from:data.from,
+        from: data.from,
         roomId: data.roomId,
-        callType:data.callType, 
+        callType: data.callType,
       });
     }
   });
 
-  socket.on("outgoing-video-call", (data)=>{
+  socket.on("outgoing-video-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
-    
-    if(sendUserSocket){
+    if (sendUserSocket) {
       socket.to(sendUserSocket).emit("incoming-video-call", {
-        from:data.from,
+        from: data.from,
         roomId: data.roomId,
-        callType:data.callType, 
+        callType: data.callType,
       });
     }
   });
 
-
-  socket.on("reject-voice-call", (data)=>{
+  socket.on("reject-voice-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.from);
-    if(sendUserSocket){
+    if (sendUserSocket) {
       socket.to(sendUserSocket).emit("voice-call-rejected");
     }
   });
 
-  socket.on("reject-video-call", (data)=>{
+  socket.on("reject-video-call", (data) => {
     const sendUserSocket = onlineUsers.get(data.from);
-    if(sendUserSocket){
+    if (sendUserSocket) {
       socket.to(sendUserSocket).emit("video-call-rejected");
     }
   });
 
-  socket.on("accept-incoming-call", ({id})=>{
+  socket.on("accept-incoming-call", ({ id }) => {
     const sendUserSocket = onlineUsers.get(id);
     socket.to(sendUserSocket).emit("accept-call");
   });
-
 });
