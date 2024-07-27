@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import cors from "cors";
+// import cors from "cors";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
@@ -23,8 +23,8 @@ const app = express();
 //   allowedHeaders: ["Content-Type", "Authorization", "application/json", "text/plain", "*/*", "*"],
 // }));
 // app.options('*', cors()); // Handle preflight requests
-app.use(express.urlencoded({ extended: true }));
-app.use(cors());
+app.use(express.json());
+// app.use(cors());
 
 app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/images", express.static("uploads/images"));
