@@ -10,20 +10,21 @@ const app = express();
 
 // console.log(process.env.CLIENT_URL);
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, application/json, text/plain, */*, *");
-  next();
-});
+// app.use((req, res, next) => {
+//   res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL);
+//   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+//   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, application/json, text/plain, */*, *");
+//   next();
+// });
 
-app.use(cors({
-  origin: [process.env.CLIENT_URL, "http://localhost:3000/login"], // Ensure this is the correct URL
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "application/json", "text/plain", "*/*", "*"],
-}));
-app.options('*', cors()); // Handle preflight requests
-app.use(express.json());
+// app.use(cors({
+//   origin: [process.env.CLIENT_URL, "http://localhost:3000"], // Ensure this is the correct URL
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization", "application/json", "text/plain", "*/*", "*"],
+// }));
+// app.options('*', cors()); // Handle preflight requests
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 app.use("/uploads/recordings", express.static("uploads/recordings"));
 app.use("/uploads/images", express.static("uploads/images"));
