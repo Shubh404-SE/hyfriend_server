@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "nodemon api/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
