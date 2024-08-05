@@ -1,6 +1,6 @@
 // authController.js
-import { query } from '../postgres/db.js';
-import { generateToken04 } from '../utils/TokenGenerator.js';
+import { query } from "../postgres/db.js";
+import { generateToken04 } from "../utils/TokenGenerator.js";
 
 export const checkUser = async (req, res, next) => {
   try {
@@ -16,8 +16,10 @@ export const checkUser = async (req, res, next) => {
 
     if (rows.length === 0) {
       return res.json({ message: "User not found!", status: false });
-    } else {
+    } else if (rows[0].onboard) {
       return res.json({ message: "User found", status: true, data: rows[0] });
+    } else {
+      return res.json({ message: "User found", status: false, data: rows[0] });
     }
   } catch (err) {
     next(err);
@@ -32,14 +34,55 @@ export const onBoardUser = async (req, res, next) => {
     }
 
     const queryText = `
-      INSERT INTO "User" (email, name, "profilePicture", about)
-      VALUES ($1, $2, $3, $4)
+      UPDATE "User"
+      SET name = $1,
+      "profilePicture" = $2,
+      about = $3,
+      onboard = $4
+      WHERE email = $5
       RETURNING *;
     `;
-    const values = [email, name, profilePicture, about];
+    const values = [name, profilePicture, about, true,email];
     const { rows } = await query(queryText, values);
 
     return res.json({ message: "success", status: true, data: rows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const signupUser = async (req, res, next) => {
+  console.log(req.body);
+  try {
+    const { email, name } = req.body;
+    if (!email || !name) {
+      return res.send("Email, Name and image are required");
+    }
+
+    // // check user if already exist
+    // const checkUser = `
+    //   SELECT * FROM "User" WHERE email = $1;
+    // `;
+    // const { userRow } = await query(checkUser, [email]);
+
+    // if (userRow.length === 0) {
+    // if no user then create one
+    const queryText = `
+      INSERT INTO "User" (email, name)
+      VALUES ($1, $2)
+      RETURNING *;
+    `;
+    const values = [email, name];
+    const { rows } = await query(queryText, values);
+
+    return res.json({
+      message: "User created successfully",
+      status: true,
+      data: rows[0],
+    });
+    // } else {
+    //   return res.json({ message: "User already exist !!", status: false });
+    // }
   } catch (err) {
     next(err);
   }
@@ -78,7 +121,13 @@ export const generateToken = (req, res, next) => {
     const payload = "";
 
     if (appId && searverSecret && userId) {
-      const token = generateToken04(appId, userId, searverSecret, effectiveTime, payload);
+      const token = generateToken04(
+        appId,
+        userId,
+        searverSecret,
+        effectiveTime,
+        payload
+      );
       res.status(200).json({ token });
     } else {
       res.status(400).send("User id, app id, and server id are required");

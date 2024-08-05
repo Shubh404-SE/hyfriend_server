@@ -10,8 +10,9 @@ export const createTables = async () => {
       id SERIAL PRIMARY KEY,
       email VARCHAR(255) UNIQUE NOT NULL,
       name VARCHAR(255) NOT NULL,
-      "profilePicture" VARCHAR(255) DEFAULT '',
-      about TEXT DEFAULT ''
+      "profilePicture" VARCHAR(255) DEFAULT '/default_avatar.png',
+      about TEXT DEFAULT '',
+      onboard BOOLEAN DEFAULT FALSE
     );
     `);
 
