@@ -19,7 +19,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions), (req, res) => {
+app.options("*", cors(corsOptions), (req, res) => {
   res.sendStatus(204);
 });
 
@@ -35,7 +35,7 @@ const createTable = async () => {
   try {
     await createTables();
   } catch (err) {
-    console.error('Error initializing server', err);
+    console.error("Error initializing server", err);
     process.exit(1);
   }
 };
@@ -53,10 +53,12 @@ const io = new Server(server, {
 });
 
 global.onlineUsers = new Map();
+
 io.on("connection", (socket) => {
   global.chatSocket = socket;
   socket.on("add-user", (userId) => {
     onlineUsers.set(userId, socket.id);
+    console.log(`User added: ${userId} with socket ID: ${socket.id}`);
     socket.broadcast.emit("online-users", {
       onlineUsers: Array.from(onlineUsers.keys()),
     });
@@ -71,6 +73,8 @@ io.on("connection", (socket) => {
 
   socket.on("send-msg", (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
+    const otherSocket = onlineUsers.get(data.from);
+    console.log(sendUserSocket, otherSocket);
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-recieve", {
         from: data.from,
@@ -78,6 +82,29 @@ io.on("connection", (socket) => {
         message: data.message,
       });
     }
+    // Emit the contact list update to both sender and receiver
+    if (sendUserSocket) {
+      io.to(sendUserSocket).emit("update-contact-list");
+    }
+    if (otherSocket){
+      io.to(otherSocket).emit("update-contact-list");
+    }
+  });
+
+  socket.on("startTyping", ({ to, from }) => {
+    const sendUserSocket = onlineUsers.get(to);
+    socket.to(sendUserSocket).emit("typing", {
+      from,
+      to,
+    });
+  });
+
+  socket.on("stopTyping", ({ to, from }) => {
+    const sendUserSocket = onlineUsers.get(to);
+    socket.to(sendUserSocket).emit("noTyping", {
+      from,
+      to,
+    });
   });
 
   socket.on("outgoing-voice-call", (data) => {
@@ -119,5 +146,19 @@ io.on("connection", (socket) => {
   socket.on("accept-incoming-call", ({ id }) => {
     const sendUserSocket = onlineUsers.get(id);
     socket.to(sendUserSocket).emit("accept-call");
+  });
+
+  // Cleanup when user disconnects
+  socket.on("disconnect", () => {
+    for (let [userId, socketId] of onlineUsers) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId);
+        console.log(`User disconnected: ${userId}`);
+        socket.broadcast.emit("online-users", {
+          onlineUsers: Array.from(onlineUsers.keys()),
+        });
+        break;
+      }
+    }
   });
 });

@@ -13,7 +13,7 @@ export const addMessage = async (req, res, next) => {
         VALUES ($1, $2, $3, $4)
         RETURNING *;
       `;
-      const values = [message, parseInt(from), parseInt(to), getUser ? "delivered" : "sent"];
+      const values = [message, parseInt(from), parseInt(to), getUser ? "delivered" : "sent"]; // set messageStatus if user online or not. can create message delivered time. then we will have three times sent time (actual time), delivered time(when it is delivered) and seen time (when message is actually seen)
       const { rows } = await query(queryText, values);
 
       return res.status(201).send({ message: rows[0] });
@@ -36,16 +36,16 @@ export const getMessages = async (req, res, next) => {
     const values = [parseInt(from), parseInt(to)];
     const { rows: messages } = await query(queryText, values);
 
-    const unreadMessages = [];
+    const unreadMessages = []; 
 
-    messages.forEach((message, index) => {
+    messages.forEach((message, index) => { // get unreadmessages and mark them as read
       if (message.messageStatus !== "read" && message.senderId === parseInt(to)) {
         messages[index].messageStatus = "read";
         unreadMessages.push(message.id);
       }
     });
 
-    if (unreadMessages.length > 0) {
+    if (unreadMessages.length > 0) { // set messages seen time here - default it will be null or nothing
       const updateText = `
         UPDATE "Messages"
         SET "messageStatus" = 'read'
@@ -64,7 +64,7 @@ export const addImageMessage = async (req, res, next) => {
   try {
     if (req.file) {
       const date = Date.now();
-      let fileName = "uploads/images/" + date + req.file.originalname;
+      let fileName = "uploads/images/" + "HyFriend-image-"+ date + req.file.originalname; // unique name
       fs.renameSync(req.file.path, fileName);
 
       const { from, to } = req.query;
@@ -92,7 +92,7 @@ export const addAudioMessage = async (req, res, next) => {
   try {
     if (req.file) {
       const date = Date.now();
-      let fileName = "uploads/recordings/" + date + req.file.originalname;
+      let fileName = "uploads/recordings/" + "HyFriend-audio-" + date + req.file.originalname;
       fs.renameSync(req.file.path, fileName);
 
       const { from, to } = req.query;
@@ -138,7 +138,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
     `, [userId]);
 
     const messages = [...sentMessagesResult.rows, ...receivedMessagesResult.rows];
-    messages.sort((a, b) => b.createdAt - a.createdAt);
+    messages.sort((a, b) => b.createdAt - a.createdAt); 
 
     const users = new Map();
     const messageStatusChange = [];
@@ -151,7 +151,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
         messageStatusChange.push(msg.id);
       }
 
-      if (!users.has(calculatedId)) {
+      if (!users.has(calculatedId)) { // if user is not in users then unreadmessages
         const userResult = await query(`
           SELECT id, email, name, "profilePicture", about FROM "User" WHERE id = $1
         `, [calculatedId]);
@@ -171,7 +171,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
         };
 
         users.set(calculatedId, user);
-      } else if (msg.messageStatus !== 'read' && !isSender) {
+      } else if (msg.messageStatus !== 'read' && !isSender) { // is user is in  users and not sender then increase unreadmessage count
         const user = users.get(calculatedId);
         users.set(calculatedId, {
           ...user,
@@ -180,7 +180,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
       }
     }
 
-    if (messageStatusChange.length) {
+    if (messageStatusChange.length) { // change all received message status to delivered when user comes to online  
       await query(`
         UPDATE "Messages" SET "messageStatus" = 'delivered'
         WHERE id = ANY($1::int[])
