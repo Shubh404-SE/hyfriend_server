@@ -5,6 +5,7 @@ import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
 import { createTables } from "./postgres/createTable.js";
+import { query } from "./postgres/db.js";
 
 dotenv.config();
 const app = express();
@@ -47,12 +48,35 @@ const server = app.listen(process.env.PORT, () => {
 });
 
 const io = new Server(server, {
+  // from chat gpt
+  pingInterval: 25000, // How often to ping the client to keep the connection alive
+  pingTimeout: 60000, // How long the server will wait for a ping response before considering the client disconnected
   cors: {
     origin: process.env.CLIENT_URL,
   },
 });
 
 global.onlineUsers = new Map();
+const activeChats = new Map();
+
+// Function to mark a specific message as read in the database
+async function markMessageAsRead({ messageId }) {
+ 
+    try {
+      await query(
+        `
+        UPDATE "Messages" 
+        SET "messageStatus" = 'read' 
+        WHERE id = $1 AND "messageStatus" != 'read'
+      `,
+        [messageId]
+      );
+
+      console.log(`Marked message ${messageId} as read`);
+    } catch (err) {
+      console.error("Error updating message status:", err);
+    }
+}
 
 io.on("connection", (socket) => {
   global.chatSocket = socket;
@@ -71,25 +95,71 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("send-msg", (data) => {
+  socket.on("send-msg", async (data) => {
     const sendUserSocket = onlineUsers.get(data.to);
-    const otherSocket = onlineUsers.get(data.from);
-    console.log(sendUserSocket, otherSocket);
+    // console.log(sendUserSocket, otherSocket);
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-recieve", {
         from: data.from,
         to: data.to,
         message: data.message,
       });
-    }
-    // Emit the contact list update to both sender and receiver
-    if (sendUserSocket) {
-      io.to(sendUserSocket).emit("update-contact-list");
-    }
-    if (otherSocket){
-      io.to(otherSocket).emit("update-contact-list");
+
+      if (activeChats.get(data.to) === data.from) {
+        // Update the database to mark messages as read
+        await markMessageAsRead({ messageId: data.message.id });
+      }
     }
   });
+
+  // socket when user click on contactuser...
+  socket.on("mark-messages-read", ({ userId, contactId }) => {
+    const contactSocket = onlineUsers.get(contactId);
+
+    socket.to(contactSocket).emit("msg-status-update", {
+      userId,
+      contactId,
+    });
+  });
+
+  // Track which chat a user is viewing
+  socket.on("active-chat", ({ userId, contactId }) => {
+    activeChats.set(userId, contactId);
+    updateChatStatus(userId, contactId);
+  });
+
+  // When a user changes the chat (e.g., selects a different chat)
+  socket.on("change-chat", ({ userId, previousContactId, newContactId }) => {
+    // Update the active chat for the user
+    activeChats.set(userId, newContactId);
+
+    // Update the chat status for the previous chat user
+    if (previousContactId) {
+      updateChatStatus(userId, previousContactId);
+    }
+
+    // Update the chat status for the new chat user
+    updateChatStatus(userId, newContactId);
+  });
+
+  // Function to update the chat status for both users
+  function updateChatStatus(userId, contactId) {
+    const contactActiveChat = activeChats.get(contactId);
+
+    // Check if both users are viewing each other's chat
+    const areBothUsersOnSameChat =
+      contactActiveChat === userId && activeChats.get(userId) === contactId;
+
+    // Notify both users about the status
+    io.to(onlineUsers.get(userId)).emit("is-on-same-chat", {
+      status: areBothUsersOnSameChat,
+    });
+    if (onlineUsers.get(contactId)) {
+      io.to(onlineUsers.get(contactId)).emit("is-on-same-chat", {
+        status: areBothUsersOnSameChat,
+      });
+    }
+  }
 
   socket.on("startTyping", ({ to, from }) => {
     const sendUserSocket = onlineUsers.get(to);
@@ -150,15 +220,20 @@ io.on("connection", (socket) => {
 
   // Cleanup when user disconnects
   socket.on("disconnect", () => {
+    let disconnectedUserId = null;
     for (let [userId, socketId] of onlineUsers) {
       if (socketId === socket.id) {
-        onlineUsers.delete(userId);
-        console.log(`User disconnected: ${userId}`);
-        socket.broadcast.emit("online-users", {
-          onlineUsers: Array.from(onlineUsers.keys()),
-        });
+        disconnectedUserId = userId;
         break;
       }
+    }
+
+    if (disconnectedUserId) {
+      onlineUsers.delete(disconnectedUserId);
+      console.log(`User disconnected: ${disconnectedUserId}`);
+      socket.broadcast.emit("online-users", {
+        onlineUsers: Array.from(onlineUsers.keys()),
+      });
     }
   });
 });
