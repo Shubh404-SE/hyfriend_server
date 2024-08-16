@@ -75,18 +75,25 @@ export const getMessages = async (req, res, next) => {
 
     const queryText = `
       SELECT m.*, 
-             r.message AS repliedMessage, 
-             ru.name AS repliedUserName, 
-             json_agg(json_build_object('userId', mr."userId", 'userName', u.name, 'reaction', mr.reaction)) AS reactions
+            r.message AS repliedMessage, 
+            COALESCE(
+              json_agg(
+                CASE 
+                  WHEN mr."userId" IS NOT NULL THEN 
+                    json_build_object('userId', mr."userId", 'reaction', mr.reaction) 
+                  ELSE 
+                    NULL 
+                END
+              ) FILTER (WHERE mr."userId" IS NOT NULL), 
+              '[]'::json
+            ) AS reactions
       FROM "Messages" m
       LEFT JOIN "Messages" r ON m."replyToMessageId" = r.id
-      LEFT JOIN "User" ru ON m."replyToUserId" = ru.id
       LEFT JOIN "MessageReactions" mr ON m.id = mr."messageId"
-      LEFT JOIN "User" u ON mr."userId" = u.id
       WHERE (m."senderId" = $1 AND m."recieverId" = $2) OR (m."senderId" = $2 AND m."recieverId" = $1)
-      GROUP BY m.id, r.message, ru.name
+      GROUP BY m.id, r.message
       ORDER BY m."createdAt" ASC;
-    `;
+      `;
 
     const values = [parseInt(from), parseInt(to)];
     const { rows: messages } = await query(queryText, values);
