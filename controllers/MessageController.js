@@ -4,26 +4,31 @@ import fs from "fs";
 
 export const addMessage = async (req, res, next) => {
   try {
-    const { message, from, to } = req.body;
+    const { message, from, to, replyToMessageId } = req.body;
     const getUser = onlineUsers.get(to); // check for online user
 
     if (message && from && to) {
+      // Get the user information of the message being replied to
+      let replyToUserId = null;
+      if (replyToMessageId) {
+        const replyMessage = await query(
+          `SELECT "senderId" FROM "Messages" WHERE id = $1`,
+          [replyToMessageId]
+        );
+        replyToUserId = replyMessage.rows[0]?.senderId || null;
+      }
+
       const queryText = `
-        INSERT INTO "Messages" (message, "senderId", "recieverId", "messageStatus")
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO "Messages" (message, "senderId", "recieverId", type, "messageStatus", "replyToMessageId", "replyToUserId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
       `;
-      const values = [
-        message,
-        parseInt(from),
-        parseInt(to),
-        getUser ? "delivered" : "sent",
-      ]; // set messageStatus if user online or not. can create message delivered time. then we will have three times sent time (actual time), delivered time(when it is delivered) and seen time (when message is actually seen)
+      const values = [message, parseInt(from), parseInt(to), "text", getUser ? "delivered" : "sent", replyToMessageId? parseInt(replyToMessageId) : null, replyToUserId? parseInt(replyToUserId): null];
       const { rows } = await query(queryText, values);
 
       return res.status(201).send({ message: rows[0] });
     }
-    return res.status(400).send("From, to and message are required");
+    return res.status(400).send("From, to, and message are required");
   } catch (err) {
     next(err);
   }
