@@ -23,7 +23,15 @@ export const addMessage = async (req, res, next) => {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
       `;
-      const values = [message, parseInt(from), parseInt(to), "text", getUser ? "delivered" : "sent", replyToMessageId? parseInt(replyToMessageId) : null, replyToUserId? parseInt(replyToUserId): null];
+      const values = [
+        message,
+        parseInt(from),
+        parseInt(to),
+        "text",
+        getUser ? "delivered" : "sent",
+        replyToMessageId ? parseInt(replyToMessageId) : null,
+        replyToUserId ? parseInt(replyToUserId) : null,
+      ];
       const { rows } = await query(queryText, values);
 
       return res.status(201).send({ message: rows[0] });
@@ -66,10 +74,20 @@ export const getMessages = async (req, res, next) => {
     const { from, to } = req.params;
 
     const queryText = `
-      SELECT * FROM "Messages"
-      WHERE ("senderId" = $1 AND "recieverId" = $2) OR ("senderId" = $2 AND "recieverId" = $1)
-      ORDER BY id ASC;
+      SELECT m.*, 
+             r.message AS repliedMessage, 
+             ru.name AS repliedUserName, 
+             json_agg(json_build_object('userId', mr."userId", 'userName', u.name, 'reaction', mr.reaction)) AS reactions
+      FROM "Messages" m
+      LEFT JOIN "Messages" r ON m."replyToMessageId" = r.id
+      LEFT JOIN "User" ru ON m."replyToUserId" = ru.id
+      LEFT JOIN "MessageReactions" mr ON m.id = mr."messageId"
+      LEFT JOIN "User" u ON mr."userId" = u.id
+      WHERE (m."senderId" = $1 AND m."recieverId" = $2) OR (m."senderId" = $2 AND m."recieverId" = $1)
+      GROUP BY m.id, r.message, ru.name
+      ORDER BY m."createdAt" ASC;
     `;
+
     const values = [parseInt(from), parseInt(to)];
     const { rows: messages } = await query(queryText, values);
 
