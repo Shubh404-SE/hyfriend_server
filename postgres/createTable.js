@@ -25,6 +25,7 @@ export const createTables = async () => {
       message TEXT NOT NULL,
       "messageStatus" VARCHAR(50) DEFAULT 'sent',
       "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      "seenAt" TIMESTAMP DEFAULT NULL,
       "replyToMessageId" INTEGER REFERENCES "Messages"(id) ON DELETE SET NULL DEFAULT NULL,
       "replyToUserId" INTEGER REFERENCES "User"(id) ON DELETE SET NULL DEFAULT NULL
     );

@@ -66,7 +66,7 @@ async function markMessageAsRead({ messageId }) {
       await query(
         `
         UPDATE "Messages" 
-        SET "messageStatus" = 'read' 
+        SET "messageStatus" = 'read', "seenAt" = NOW()
         WHERE id = $1 AND "messageStatus" != 'read'
       `,
         [messageId]

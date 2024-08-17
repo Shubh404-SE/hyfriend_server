@@ -107,6 +107,7 @@ export const getMessages = async (req, res, next) => {
         message.senderId === parseInt(to)
       ) {
         messages[index].messageStatus = "read";
+        messages[index].seenAt = new Date();
         unreadMessages.push(message.id);
       }
     });
@@ -115,7 +116,7 @@ export const getMessages = async (req, res, next) => {
       // set messages seen time here - default it will be null or nothing
       const updateText = `
         UPDATE "Messages"
-        SET "messageStatus" = 'read'
+        SET "messageStatus" = 'read', "seenAt" = NOW()
         WHERE id = ANY($1::int[]);
       `;
       await query(updateText, [unreadMessages]);
