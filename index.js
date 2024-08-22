@@ -88,6 +88,12 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Track which chat a user is viewing
+  socket.on("active-chat", ({ userId, contactId }) => {
+    activeChats.set(userId, contactId);
+    updateChatStatus(userId, contactId);
+  });
+
   socket.on("signout", (id) => {
     onlineUsers.delete(id);
     socket.broadcast.emit("online-users", {
@@ -112,6 +118,13 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("send-react-message", async (data) => {
+    const sendUserSocket = onlineUsers.get(data.contactId);
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("react-msg-recieve", data.newReaction);
+    }
+  });
+
   // socket when user click on contactuser...
   socket.on("mark-messages-read", ({ userId, contactId }) => {
     const contactSocket = onlineUsers.get(contactId);
@@ -120,12 +133,6 @@ io.on("connection", (socket) => {
       userId,
       contactId,
     });
-  });
-
-  // Track which chat a user is viewing
-  socket.on("active-chat", ({ userId, contactId }) => {
-    activeChats.set(userId, contactId);
-    updateChatStatus(userId, contactId);
   });
 
   // When a user changes the chat (e.g., selects a different chat)
