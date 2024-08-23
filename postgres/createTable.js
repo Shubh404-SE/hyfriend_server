@@ -27,7 +27,9 @@ export const createTables = async () => {
       "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       "seenAt" TIMESTAMP DEFAULT NULL,
       "replyToMessageId" INTEGER REFERENCES "Messages"(id) ON DELETE SET NULL DEFAULT NULL,
-      "replyToUserId" INTEGER REFERENCES "User"(id) ON DELETE SET NULL DEFAULT NULL
+      "replyToUserId" INTEGER REFERENCES "User"(id) ON DELETE SET NULL DEFAULT NULL,
+      "isDeletedForEveryone" BOOLEAN DEFAULT FALSE,
+      "deletedForUsers" JSONB DEFAULT '[]'
     );
     `);
 
@@ -39,7 +41,7 @@ export const createTables = async () => {
     reaction VARCHAR(50),
     "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE ("messageId", "userId")
-);
+    );
       `);
 
     console.log("Tables created successfully (if they didn't already exist)!");

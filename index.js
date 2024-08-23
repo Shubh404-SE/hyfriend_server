@@ -61,21 +61,20 @@ const activeChats = new Map();
 
 // Function to mark a specific message as read in the database
 async function markMessageAsRead({ messageId }) {
- 
-    try {
-      await query(
-        `
+  try {
+    await query(
+      `
         UPDATE "Messages" 
         SET "messageStatus" = 'read', "seenAt" = NOW()
         WHERE id = $1 AND "messageStatus" != 'read'
       `,
-        [messageId]
-      );
+      [messageId]
+    );
 
-      console.log(`Marked message ${messageId} as read`);
-    } catch (err) {
-      console.error("Error updating message status:", err);
-    }
+    console.log(`Marked message ${messageId} as read`);
+  } catch (err) {
+    console.error("Error updating message status:", err);
+  }
 }
 
 io.on("connection", (socket) => {
@@ -115,6 +114,15 @@ io.on("connection", (socket) => {
         // Update the database to mark messages as read
         await markMessageAsRead({ messageId: data.message.id });
       }
+    }
+  });
+
+  socket.on("delete-msg", ({ contactId, messageId, userId }) => {
+    const sendUserSocket = onlineUsers.get(contactId);
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("msg-delete", {
+        messageId, userId, contactId,
+      });
     }
   });
 

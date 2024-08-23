@@ -293,3 +293,64 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
     next(err);
   }
 };
+
+// Controller to handle deleting a message
+export const deleteMessage = async (req, res) => {
+  const { messageId, userId, type } = req.body;
+
+  try {
+    const { rows } = await query(
+      `SELECT * FROM "Messages" WHERE id = $1`,
+      [messageId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Message not found" });
+    }
+
+    const message = rows[0];
+
+    const timeElapsed = new Date() - new Date(message.createdAt);
+
+    // Convert time to hours
+    const hoursElapsed = timeElapsed / (1000 * 60 * 60);
+
+    if (type === "DELETED_FOR_EVERYONE") {
+      if (message.senderId !== userId) {
+        return res
+          .status(403)
+          .json({
+            error: "Only the sender can delete the message for everyone.",
+          });
+      }
+      if (hoursElapsed > 24) {
+        return res
+          .status(403)
+          .json({
+            error: "Message can only be deleted for everyone within 24 hours.",
+          });
+      }
+
+      await query(
+        `UPDATE "Messages" SET "isDeletedForEveryone" = TRUE WHERE id = $1`,
+        [messageId]
+      );
+
+      return res.status(200).json({ message: "Message deleted for everyone." });
+    } else if (type === "DELETED_FOR_ME") {
+      const updatedDeletedForUsers = [...message.deletedForUsers, userId];
+
+      await query(
+        `UPDATE "Messages" SET "deletedForUsers" = $1 WHERE id = $2`,
+        [JSON.stringify(updatedDeletedForUsers), messageId]
+      );
+
+      return res.status(200).json({ message: "Message deleted for you." });
+    }
+
+    return res.status(400).json({ error: "Invalid delete type specified." });
+  } catch (err) {
+    console.error("Error deleting message:", err);
+    return res.status(500).json({ error: "Internal server error." });
+  }
+};
