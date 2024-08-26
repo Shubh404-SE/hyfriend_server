@@ -87,12 +87,6 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Track which chat a user is viewing
-  socket.on("active-chat", ({ userId, contactId }) => {
-    activeChats.set(userId, contactId);
-    updateChatStatus(userId, contactId);
-  });
-
   socket.on("signout", (id) => {
     onlineUsers.delete(id);
     socket.broadcast.emit("online-users", {
@@ -111,7 +105,6 @@ io.on("connection", (socket) => {
       });
 
       if (activeChats.get(data.to) === data.from) {
-        // Update the database to mark messages as read
         await markMessageAsRead({ messageId: data.message.id });
       }
     }
@@ -121,7 +114,9 @@ io.on("connection", (socket) => {
     const sendUserSocket = onlineUsers.get(contactId);
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit("msg-delete", {
-        messageId, userId, contactId,
+        messageId,
+        userId,
+        contactId,
       });
     }
   });
@@ -143,9 +138,14 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Track which chat a user is viewing
+  socket.on("active-chat", ({ userId, contactId }) => {
+    activeChats.set(userId, contactId);
+    updateChatStatus(userId, contactId);
+  });
+
   // When a user changes the chat (e.g., selects a different chat)
   socket.on("change-chat", ({ userId, previousContactId, newContactId }) => {
-    // Update the active chat for the user
     activeChats.set(userId, newContactId);
 
     // Update the chat status for the previous chat user

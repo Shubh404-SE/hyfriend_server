@@ -299,10 +299,9 @@ export const deleteMessage = async (req, res) => {
   const { messageId, userId, type } = req.body;
 
   try {
-    const { rows } = await query(
-      `SELECT * FROM "Messages" WHERE id = $1`,
-      [messageId]
-    );
+    const { rows } = await query(`SELECT * FROM "Messages" WHERE id = $1`, [
+      messageId,
+    ]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Message not found" });
@@ -317,18 +316,14 @@ export const deleteMessage = async (req, res) => {
 
     if (type === "DELETED_FOR_EVERYONE") {
       if (message.senderId !== userId) {
-        return res
-          .status(403)
-          .json({
-            error: "Only the sender can delete the message for everyone.",
-          });
+        return res.status(201).json({
+          error: "Only the sender can delete the message for everyone.",
+        });
       }
       if (hoursElapsed > 24) {
-        return res
-          .status(403)
-          .json({
-            error: "Message can only be deleted for everyone within 24 hours.",
-          });
+        return res.status(201).json({
+          error: "Message can only be deleted for everyone within 24 hours.",
+        });
       }
 
       await query(
