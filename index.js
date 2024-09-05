@@ -4,11 +4,24 @@ import cors from "cors";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
-import { createTables } from "./postgres/createTable.js";
+import sequelize from "./utils/Database.js";
+// import { createTables } from "./postgres/createTable.js";
 import { query } from "./postgres/db.js";
+import { User, Chat, ChatUser, Message, MessageReaction } from './models/index.js';
 
 dotenv.config();
 const app = express();
+
+
+const syncDatabase = async () => {
+  try {
+    await sequelize.sync({ force: false }); // Set force to true to drop and recreate the tables
+    console.log('Database synced successfully!');
+  } catch (error) {
+    console.error('Error syncing the database:', error);
+  }
+};
+syncDatabase();
 
 // CORS Configuration
 const corsOptions = {
@@ -32,16 +45,16 @@ app.use("/uploads/images", express.static("uploads/images"));
 app.use("/api/auth", AuthRoutes);
 app.use("/api/messages", MessageRoutes);
 
-const createTable = async () => {
-  try {
-    await createTables();
-  } catch (err) {
-    console.error("Error initializing server", err);
-    process.exit(1);
-  }
-};
-
-createTable();
+// const createTable = async () => {
+//   try {
+//     await createTables();
+//   } catch (err) {
+//     console.error("Error initializing server", err);
+//     process.exit(1);
+//   }
+// };
+// create tables using sql query
+// createTable();
 
 const server = app.listen(process.env.PORT, () => {
   console.log(`Server started at port ${process.env.PORT}`);

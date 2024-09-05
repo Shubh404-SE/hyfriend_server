@@ -196,7 +196,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
     // Fetch the user
     const userResult = await query(
       `
-      SELECT * FROM "User" WHERE id = $1
+      SELECT * FROM "Users" WHERE id = $1
     `,
       [userId]
     );

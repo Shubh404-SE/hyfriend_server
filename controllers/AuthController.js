@@ -1,5 +1,5 @@
 // authController.js
-import { query } from "../postgres/db.js";
+import User from "../models/User.js";
 import { generateToken04 } from "../utils/TokenGenerator.js";
 
 export const checkUser = async (req, res, next) => {
@@ -9,17 +9,14 @@ export const checkUser = async (req, res, next) => {
       return res.json({ message: "Email is required", status: false });
     }
 
-    const queryText = `
-      SELECT * FROM "User" WHERE email = $1;
-    `;
-    const { rows } = await query(queryText, [email]);
+    const user = await User.findOne({ where: { email } });
 
-    if (rows.length === 0) {
+    if (!user) {
       return res.json({ message: "User not found!", status: false });
-    } else if (rows[0].onboard) {
-      return res.json({ message: "User found", status: true, data: rows[0] });
+    } else if (user.onboard) {
+      return res.json({ message: "User found", status: true, data: user });
     } else {
-      return res.json({ message: "User found", status: false, data: rows[0] });
+      return res.json({ message: "User found", status: false, data: user });
     }
   } catch (err) {
     next(err);
@@ -33,56 +30,46 @@ export const onBoardUser = async (req, res, next) => {
       return res.send("Email, Name and image are required");
     }
 
-    const queryText = `
-      UPDATE "User"
-      SET name = $1,
-      "profilePicture" = $2,
-      about = $3,
-      onboard = $4
-      WHERE email = $5
-      RETURNING *;
-    `;
-    const values = [name, profilePicture, about, true,email];
-    const { rows } = await query(queryText, values);
+    const user = await User.findOne({ where: { email } });
 
-    return res.json({ message: "success", status: true, data: rows[0] });
+    if (!user) {
+      return res.status(404).json({ message: "User not found", status: false });
+    }
+
+    user.name = name;
+    user.profilePicture = profilePicture;
+    user.about = about;
+    user.onboard = true;
+
+    await user.save();
+
+    return res.json({ message: "Success", status: true, data: user });
   } catch (err) {
     next(err);
   }
 };
 
 export const signupUser = async (req, res, next) => {
-  console.log(req.body);
   try {
     const { email, name } = req.body;
     if (!email || !name) {
-      return res.send("Email, Name and image are required");
+      return res.send("Email and Name are required");
     }
 
-    // // check user if already exist
-    // const checkUser = `
-    //   SELECT * FROM "User" WHERE email = $1;
-    // `;
-    // const { userRow } = await query(checkUser, [email]);
+    const [user, created] = await User.findOrCreate({
+      where: { email },
+      defaults: { name }
+    });
 
-    // if (userRow.length === 0) {
-    // if no user then create one
-    const queryText = `
-      INSERT INTO "User" (email, name)
-      VALUES ($1, $2)
-      RETURNING *;
-    `;
-    const values = [email, name];
-    const { rows } = await query(queryText, values);
+    if (!created) {
+      return res.json({ message: "User already exists!", status: false });
+    }
 
     return res.json({
       message: "User created successfully",
       status: true,
-      data: rows[0],
+      data: user,
     });
-    // } else {
-    //   return res.json({ message: "User already exist !!", status: false });
-    // }
   } catch (err) {
     next(err);
   }
@@ -90,11 +77,10 @@ export const signupUser = async (req, res, next) => {
 
 export const getAllUsers = async (req, res, next) => {
   try {
-    const queryText = `
-      SELECT id, email, name, "profilePicture", about FROM "User"
-      ORDER BY name ASC;
-    `;
-    const { rows: users } = await query(queryText);
+    const users = await User.findAll({
+      attributes: ['id', 'email', 'name', 'profilePicture', 'about'],
+      order: [['name', 'ASC']],
+    });
 
     const usersGroupByInitialLetter = {};
 
@@ -111,7 +97,6 @@ export const getAllUsers = async (req, res, next) => {
     next(err);
   }
 };
-
 export const generateToken = (req, res, next) => {
   try {
     const appId = parseInt(process.env.ZEGO_APP_ID);
