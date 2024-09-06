@@ -28,7 +28,7 @@ export const checkUser = async (req, res, next) => {
 
 export const onBoardUser = async (req, res, next) => {
   try {
-    const { email, name, imgUrl: profilePicture, about } = req.body;
+    const { email, name, lg, imgUrl: profilePicture, about } = req.body;
     if (!email || !name || !profilePicture) {
       return res.send("Email, Name and image are required");
     }
@@ -38,11 +38,12 @@ export const onBoardUser = async (req, res, next) => {
       SET name = $1,
       "profilePicture" = $2,
       about = $3,
-      onboard = $4
-      WHERE email = $5
+      onboard = $4,
+      langauge = $5
+      WHERE email = $6
       RETURNING *;
     `;
-    const values = [name, profilePicture, about, true,email];
+    const values = [name, profilePicture, about, true, lg ? lg : "English", email];
     const { rows } = await query(queryText, values);
 
     return res.json({ message: "success", status: true, data: rows[0] });
@@ -91,7 +92,7 @@ export const signupUser = async (req, res, next) => {
 export const getAllUsers = async (req, res, next) => {
   try {
     const queryText = `
-      SELECT id, email, name, "profilePicture", about FROM "User"
+      SELECT id, email, name, "profilePicture", langauge, about FROM "User"
       ORDER BY name ASC;
     `;
     const { rows: users } = await query(queryText);

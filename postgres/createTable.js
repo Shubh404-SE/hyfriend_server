@@ -12,6 +12,7 @@ export const createTables = async () => {
       name VARCHAR(255) NOT NULL,
       "profilePicture" VARCHAR(255) DEFAULT '/default_avatar.png',
       about TEXT DEFAULT '',
+      langauge TEXT DEFAULT 'English',
       onboard BOOLEAN DEFAULT FALSE
     );
     `);

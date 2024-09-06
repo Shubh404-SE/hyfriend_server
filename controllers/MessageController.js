@@ -239,13 +239,12 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
         // if user is not in users then unreadmessages
         const userResult = await query(
           `
-          SELECT id, email, name, "profilePicture", about FROM "User" WHERE id = $1
+          SELECT id, email, name, "profilePicture", langauge, about FROM "User" WHERE id = $1
         `,
           [calculatedId]
         );
 
         const userObj = userResult.rows[0];
-
         let user = {
           messageId: msg.id,
           type: msg.type,
